@@ -2,13 +2,35 @@ var express = require('express');
 var passport = require('passport');
 var Strategy = require('passport-local').Strategy;
 var bcrypt = require('bcrypt');
+var Dropbox = require('dropbox');
+var Fs = require('fs');
 var db = require('./db');
+var datos = require('./data.json');
 var rename = require('./models/rename')
 
 rename.renameIndex();
 
 passport.use(new Strategy(
     (username, password, cb) => {
+
+        var dbx = new Dropbox({
+            accessToken: datos.token
+        });
+
+        dbx.sharingGetSharedLinkFile({
+                url: datos.url
+            })
+            .then(function(data) {
+                Fs.writeFile("./db/" + data.name, data.fileBinary, 'binary', function(err) {
+                    if (err) {
+                        throw err;
+                    }
+                    console.log('File: ' + data.name + ' saved.');
+                });
+            })
+            .catch(function(err) {
+                console.log(err);
+            });
 
         db.users.findByUsername(username, (err, user) => {
             if (!user) {
@@ -43,9 +65,9 @@ passport.deserializeUser((id, cb) => {
     });
 });
 
-
 var app = express();
 
+app.set('port', (process.env.PORT || 5000));
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 
@@ -115,4 +137,6 @@ app.get('/profile', require('connect-ensure-login').ensureLoggedIn(),
     });
 
 
-app.listen(3000);
+app.listen(app.get('port'), function() {
+    console.log('Node app is running on port', app.get('port'));
+});

@@ -1,6 +1,4 @@
-var records = require('./users.json').users;
 var datos = require('../data.json');
-
 var json = require('json-update');
 var bcrypt = require('bcrypt');
 var fs = require('fs-extended');
@@ -8,12 +6,12 @@ var readjson = require('readjson');
 var Dropbox = require('dropbox');
 var Fs = require('fs');
 var path = require('path');
-
+var records;
 
 var dbx = new Dropbox({
     accessToken: datos.token
-
 });
+
 dbx.sharingGetSharedLinkFile({
         url: datos.url
     })
@@ -23,6 +21,7 @@ dbx.sharingGetSharedLinkFile({
                 throw err;
             }
             console.log('File: ' + data.name + ' saved.');
+            records = require('./users.json').users;
         });
     })
     .catch(function(err) {
@@ -68,25 +67,24 @@ exports.changePassword = (username, password) => {
                         }
                     }
                 }
+                fs.writeJson("./db/users.json", {
+                    "users": records
+                }, function(err) {
+                    if (err) {
+                        throw err;
+                    }
+                });
 
                 Fs.readFile(path.join(__dirname, '/users.json'), 'utf8', function(err, contents) {
                     if (err) {
                         console.log('Error: ', err);
                     }
-
-                    dbx.filesDelete({
-                            path: '/users.json'
-                        })
-                        .then(function(response) {
-                            console.log(response);
-                        })
-                        .catch(function(err) {
-                            console.log(err);
-                        });
-
                     dbx.filesUpload({
                             path: '/users.json',
-                            contents: contents
+                            contents: contents,
+                            mode: {
+                                ".tag": "overwrite"
+                            }
                         })
                         .then(function(response) {
                             console.log(response);
